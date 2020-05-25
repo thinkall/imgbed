@@ -70,7 +70,7 @@ def update_idhash(db, start=0, lines=20):
         country = val[2]
         idhash_new = env.generate_id(title+country)
         sql_many.append((idhash_new, idhash_old))
-        if lines - start <= 20:
+        if lines <= 100:
             print(ind, idhash_old, idhash_new, title, country)
         # break
         n = n + 1
@@ -93,8 +93,10 @@ if __name__ == '__main__':
 
     parser = argparse.ArgumentParser(
         description='update idhash from start row to end row')
-    parser.add_argument('--start', type=int, default=1400)
-    parser.add_argument('--lines', type=int, default=1700)
+    parser.add_argument('--start', type=int, default=0)
+    parser.add_argument('--lines', type=int, default=100)
     args = parser.parse_args()
+    env.logger.info(f'begin updating idhash for start={args.start}, lines={args.lines}')
     update_idhash(db, args.start, args.lines)
+    env.logger.info(f'finished updating idhash for start={args.start}, lines={args.lines}')
     db.close()
