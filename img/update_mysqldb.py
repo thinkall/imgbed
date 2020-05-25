@@ -9,6 +9,7 @@ END
 """
 
 import pymysql
+import argparse
 import init_env as env
 
 
@@ -55,22 +56,33 @@ def update_pubtime(db):
     print(len(wrong_pubtime))
 
 
-def update_idhash(db):
-    sql = 'select idhash, title, country from news where provider="jeuneafrique";'
+def update_idhash(db, start=0, lines=20):
+    sql = f'select idhash, title, country from news order by pubtime desc limit {start}, {lines};'
     cursor = db.cursor()
     cursor.execute(sql)
     data = cursor.fetchall()
     print(len(data))
-    sql_many = []
+
+    n, sql_many = 0, []
     for ind, val in enumerate(data):
         idhash_old = val[0]
         title = val[1]
         country = val[2]
         idhash_new = env.generate_id(title+country)
         sql_many.append((idhash_new, idhash_old))
-        # print(ind, idhash_old, idhash_new, title, country)
+        if lines - start <= 20:
+            print(ind, idhash_old, idhash_new, title, country)
         # break
-    _update_many_sql(db, sql_many, 'idhash')
+        n = n + 1
+        if n > 1000:
+            _update_many_sql(db, sql_many, 'idhash')
+            print(f'{ind}, committed part of the task.')
+            env.logger.info(f'{ind}, committed part of the task.')
+            n, sql_many = 0, []
+    if n > 0:
+        _update_many_sql(db, sql_many, 'idhash')
+    print(f'{ind}, committed all of the task.')
+    env.logger.info(f'{ind}, committed all of the task.')
 
 
 if __name__ == '__main__':
@@ -78,5 +90,11 @@ if __name__ == '__main__':
                          charset="utf8mb4")  ##mysql 连接
 
     # update_pubtime(db)
-    update_idhash(db)
+
+    parser = argparse.ArgumentParser(
+        description='update idhash from start row to end row')
+    parser.add_argument('--start', type=int, default=1400)
+    parser.add_argument('--lines', type=int, default=1700)
+    args = parser.parse_args()
+    update_idhash(db, args.start, args.lines)
     db.close()
